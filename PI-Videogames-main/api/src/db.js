@@ -1,41 +1,57 @@
-require('dotenv').config();
-const { Sequelize } = require('sequelize');
-const fs = require('fs');
-const path = require('path');
-const {
-  DB_USER, DB_PASSWORD, DB_HOST,
-} = process.env;
+import { Sequelize } from "sequelize";
+import { DB_USER, DB_PASSWORD, DB_HOST, VIDEO_GAMES } from "./config/envs.js";
 
-const sequelize = new Sequelize(`postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/videogames`, {
-  logging: false, // set to console.log to see the raw SQL queries
-  native: false, // lets Sequelize know we can use pg-native for ~30% more speed
-});
-const basename = path.basename(__filename);
+import { readdirSync } from "fs";
+import { basename, join } from "path";
+import { fileURLToPath } from "url";
+
+const __dirname = fileURLToPath(new URL(".", import.meta.url));
+
+export const sequelize = new Sequelize(
+  `postgres://${DB_USER}:${DB_PASSWORD}@${DB_HOST}/${VIDEO_GAMES}`,
+  {
+    logging: false,
+    native: false,
+  }
+);
 
 const modelDefiners = [];
 
-// Leemos todos los archivos de la carpeta Models, los requerimos y agregamos al arreglo modelDefiners
-fs.readdirSync(path.join(__dirname, '/models'))
-  .filter((file) => (file.indexOf('.') !== 0) && (file !== basename) && (file.slice(-3) === '.js'))
+readdirSync(join(__dirname, "models"))
+  .filter((file) => file !== basename && file.slice(-3) === ".js")
   .forEach((file) => {
-    modelDefiners.push(require(path.join(__dirname, '/models', file)));
+    modelDefiners.push(import(new URL(`./models/${file}`, import.meta.url)));
   });
 
-// Injectamos la conexion (sequelize) a todos los modelos
-modelDefiners.forEach(model => model(sequelize));
-// Capitalizamos los nombres de los modelos ie: product => Product
-let entries = Object.entries(sequelize.models);
-let capsEntries = entries.map((entry) => [entry[0][0].toUpperCase() + entry[0].slice(1), entry[1]]);
-sequelize.models = Object.fromEntries(capsEntries);
+export const initDBModels = async () => {
+  // Carga modelos
+  for (const modelDefiner of modelDefiners) {
+    const modelModule = await modelDefiner;
+    const model = modelModule.default || modelModule;
+    model(sequelize);
+  }
 
-// En sequelize.models están todos los modelos importados como propiedades
-// Para relacionarlos hacemos un destructuring
-const { Videogame } = sequelize.models;
+  // Capitaliza nombres
+  let entries = Object.entries(sequelize.models);
+  let capsEntries = entries.map((entry) => [
+    entry[0][0].toUpperCase() + entry[0].slice(1),
+    entry[1],
+  ]);
 
-// Aca vendrian las relaciones
-// Product.hasMany(Reviews);
+  sequelize.models = Object.fromEntries(capsEntries);
 
-module.exports = {
-  ...sequelize.models, // para poder importar los modelos así: const { Product, User } = require('./db.js');
-  conn: sequelize,     // para importart la conexión { conn } = require('./db.js');
+  const { Videogames, Genres, Platforms } = sequelize.models;
+
+  Videogames.belongsToMany(Genres, { through: "videoGames_genres" });
+  Genres.belongsToMany(Videogames, { through: "videoGames_genres" });
+
+  Videogames.belongsToMany(Platforms, { through: "videoGames_platforms" });
+  Platforms.belongsToMany(Videogames, { through: "videoGames_platforms" });
+
+  return sequelize.models;
 };
+
+export default sequelize;
+
+// import { initDBModels } from './ruta/a/tu/archivo/principal.js';
+// const { Videogames, Genres } = await initDBModels();

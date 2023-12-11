@@ -1,3 +1,9 @@
+// .___________. ____    ____ .___________.
+// |           ||\   \  /   /||           |
+// `---|  |----`| \   \/   / |`---|  |----`
+//     |  |     |  \      /  |     |  |
+//     |  |     |   \    /   |     |  |
+//     |__|     |    \__/    |     |__|
 //                       _oo0oo_
 //                      o8888888o
 //                      88" . "88
@@ -17,12 +23,20 @@
 //     =====`-.____`.___ \_____/___.-`___.-'=====
 //                       `=---='
 //     ~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~~
-const server = require('./src/app.js');
-const { conn } = require('./src/db.js');
+import server from "./src/app.js";
+import sequelize from "./src/db.js";
+const PORT = process.env.PORT || 3001;
 
-// Syncing all the models at once.
-conn.sync({ force: true }).then(() => {
-  server.listen(3001, () => {
-    console.log('%s listening at 3001'); // eslint-disable-line no-console
-  });
+server.listen(PORT, () => {
+  console.log(`servidor`);
+  sequelize.sync({ force: true });
 });
+
+// 888b      d888 888                   888
+// 8888b   d8888 888                   888
+// 88888b.d88888 888                   888
+// 888Y88888P888 888  .d88b.   .d8888b 888888
+// 888 Y888P 888 888 d88""88b d88P"    888
+// 888  Y8P  888 888 888  888 888      888
+// 888   "   888 888 Y88..88P Y88b.    Y88b.
+// 888       888 888  "Y88P"   "Y8888P  "Y8888
